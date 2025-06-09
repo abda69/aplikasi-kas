@@ -1,22 +1,27 @@
-// Pembungkus untuk memastikan HTML siap sebelum JS berjalan
+// kas-harian-script.js (VERSI FINAL YANG SUDAH DIPERBAIKI)
+
+// LANGKAH 1: Impor semua modul di paling atas. Ini adalah aturan wajib.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, onSnapshot, doc, getDoc, setDoc, getDocs, orderBy, serverTimestamp, deleteDoc, writeBatch, where, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+// LANGKAH 2: Tunggu sampai seluruh dokumen HTML selesai dimuat.
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Konfigurasi Firebase diambil dari HTML
+    // LANGKAH 3: Setelah HTML siap, baru jalankan semua logika aplikasi di dalam sini.
+
+    // Ambil konfigurasi Firebase dari HTML
     const firebaseConfig = window.firebaseConfig;
+    const appId = 'kas-harian-default'; // Kita set default di sini
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'kas-harian-default';
-
-    // Semua kode lamamu dimulai dari sini
-    // TIDAK ADA YANG DIUBAH, HANYA DIPINDAHKAN KE DALAM PEMBUNGKUS INI
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, doc, getDoc, setDoc, getDocs, orderBy, serverTimestamp, deleteDoc, writeBatch, where, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Bagian ini TIDAK ADA PERUBAHAN
+    // --- Di sini letak semua kode aplikasi sisanya, TIDAK ADA PERUBAHAN ---
+
     let userId = null;
     let transactions = [];
     let unsubscribeTransactions = null;
@@ -1076,4 +1081,4 @@ document.addEventListener('DOMContentLoaded', function() {
     if (companyNameElement) companyNameElement.textContent = "NAMA KELOMPOK";
     resetForm();
 
-}); // Penutup untuk pembungkus 'DOMContentLoaded'
+});
