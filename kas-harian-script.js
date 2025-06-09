@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- Di sini letak semua kode aplikasi sisanya, TIDAK ADA PERUBAHAN ---
+    // --- Di sini letak semua kode aplikasi sisanya ---
 
     let userId = null;
     let transactions = [];
@@ -114,12 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatDate(dateString) {
         if (!dateString) return 'N/A';
         const [year, month, day] = dateString.split('-');
-        return `<span class="math-inline">\{day\}/</span>{month}/${year}`;
+        return `${day}/${month}/${year}`;
     }
     function getMonthYear(dateString) {
         if (!dateString) return '';
         const [year, month] = dateString.split('-');
-        return `<span class="math-inline">\{month\}</span>{year.slice(2)}`;
+        return `${month}${year.slice(2)}`;
     }
 
     function populateGroupNameDropdown() {
@@ -156,18 +156,27 @@ document.addEventListener('DOMContentLoaded', function() {
             await loadLastSelectedGroup();
         } else {
             try {
+                if (!window.firebaseConfig || !window.firebaseConfig.apiKey || window.firebaseConfig.apiKey.includes("MASUKKAN_API_KEY")) {
+                     showStatus("Konfigurasi Firebase tidak valid. Ganti placeholder di kode.", "error");
+                     showLoading(false);
+                     return;
+                }
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (error) { console.error("Auth Error: ", error); showStatus(`Error autentikasi: ${error.message}`, "error"); showLoading(false); }
+            } catch (error) { 
+                console.error("Auth Error: ", error); 
+                showStatus(`Error autentikasi: ${error.message}`, "error"); 
+                showLoading(false); 
+            }
         }
     });
 
     async function loadLastSelectedGroup() {
         if (!userId || !groupNameSelect || !companyNameElement) return;
-        const settingsDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/appSettings/companyProfile`);
+        const settingsDocRef = doc(db, `artifacts/${appId}/users/${userId}/appSettings/companyProfile`);
         try {
             const docSnap = await getDoc(settingsDocRef);
             let lastSelected = "";
@@ -221,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             companyNameElement.textContent = selectedGroup.toUpperCase();
 
-            const settingsDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/appSettings/companyProfile`);
+            const settingsDocRef = doc(db, `artifacts/${appId}/users/${userId}/appSettings/companyProfile`);
             try {
                 await setDoc(settingsDocRef, { lastSelectedGroup: selectedGroup }, { merge: true });
                 showStatus(`Kelompok ${selectedGroup} dipilih.`, "success");
@@ -257,14 +266,19 @@ document.addEventListener('DOMContentLoaded', function() {
             resetForm();
         });
     }
+
     if (voucherTypeSelect) {
-        voucherTypeSelect.addEventListener('change', getNextVoucherNumber);
+        voucherTypeSelect.addEventListener('change', updateVoucherNumberDisplay);
+    }
+
+    if (transactionDateInput) {
+        transactionDateInput.addEventListener('change', updateVoucherNumberDisplay);
     }
 
     async function saveOpeningBalances(changedField = null) {
         if (!userId || !currentReportDate || !selectedGroup) return;
 
-        const reportDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}`);
+        const reportDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}`);
         let currentData = {};
         try {
             const docSnap = await getDoc(reportDocRef);
@@ -329,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         try {
-            const reportDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}`);
+            const reportDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}`);
             const docSnap = await getDoc(reportDocRef);
 
             if (docSnap.exists()) {
@@ -346,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const dateObj = new Date(currentReportDate + 'T00:00:00Z');
             dateObj.setUTCDate(dateObj.getUTCDate() - 1);
             const previousDayDate = dateObj.toISOString().slice(0, 10);
-            const prevDayDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{previousDayDate}`);
+            const prevDayDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${previousDayDate}`);
             const prevDayDocSnap = await getDoc(prevDayDocRef);
 
             if (prevDayDocSnap.exists()) {
@@ -389,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             pendinganKantorInput.value = dataForToday.pendinganKantor;
 
             if (needsSaveForDefaultsOrCarryOver) {
-                const reportDocRefForSave = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}`);
+                const reportDocRefForSave = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}`);
                 await setDoc(reportDocRefForSave, dataForToday, { merge: true });
                 console.log("Initial/carried-over opening balances saved for " + currentReportDate + " in group " + selectedGroup);
             }
@@ -410,45 +424,34 @@ document.addEventListener('DOMContentLoaded', function() {
         periodElement.textContent = `PERIODE : ${date.toLocaleDateString('id-ID', options).toUpperCase()}`;
     }
 
-    async function getNextVoucherNumber() {
+    async function updateVoucherNumberDisplay() {
         const currentTransactionDate = transactionDateInput ? transactionDateInput.value : currentReportDate;
-        if (!userId || !currentReportDate || !selectedGroup || !currentTransactionDate || !voucherNumberDisplay || !voucherTypeSelect) {
-            if (voucherNumberDisplay && voucherTypeSelect) voucherNumberDisplay.textContent = `<span class="math-inline">\{voucherTypeSelect\.value\}\-</span>{getMonthYear(currentTransactionDate || currentReportDate)}-001`;
-            return "001";
+        if (!userId || !selectedGroup || !currentTransactionDate || !voucherNumberDisplay || !voucherTypeSelect) {
+            return;
         }
-        showLoading(true);
+
+        showLoading(true, "Mendapatkan No Voucher...");
+        const voucherType = voucherTypeSelect.value;
+        const yearMonth = currentTransactionDate.slice(0, 7); // Format: "YYYY-MM"
+        const counterDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/voucherCounters/${yearMonth}`);
+
         let nextSeq = 1;
-        const targetVoucherMonthYear = getMonthYear(currentTransactionDate);
-
         try {
-            const transactionsColRef = collection(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}/transactions`);
-
-            const q = query(transactionsColRef,
-                where("voucherType", "==", voucherTypeSelect.value),
-                where("voucherMonthYear", "==", targetVoucherMonthYear)
-            );
-
-            const querySnapshot = await getDocs(q);
-            let maxSeqFound = 0;
-            if (!querySnapshot.empty) {
-                querySnapshot.forEach((doc) => {
-                    const seq = parseInt(doc.data().voucherNumberSequence);
-                    if (seq > maxSeqFound) {
-                        maxSeqFound = seq;
-                    }
-                });
-                nextSeq = maxSeqFound + 1;
+            const counterDoc = await getDoc(counterDocRef);
+            if (counterDoc.exists()) {
+                const currentSeq = counterDoc.data()[voucherType] || 0;
+                nextSeq = currentSeq + 1;
             }
         } catch (error) {
-            console.error("Error getting next voucher number:", error);
+            console.error("Error reading voucher counter for display:", error);
+            showStatus("Gagal membaca nomor voucher terakhir.", "error");
         } finally {
-            showLoading(false);
+            const targetVoucherMonthYearForDisplay = getMonthYear(currentTransactionDate); // e.g., "0625"
             const formattedSeq = String(nextSeq).padStart(3, '0');
-            voucherNumberDisplay.textContent = `<span class="math-inline">\{voucherTypeSelect\.value\}\-</span>{targetVoucherMonthYear}-${formattedSeq}`;
-            return formattedSeq;
+            voucherNumberDisplay.textContent = `${voucherType}-${targetVoucherMonthYearForDisplay}-${formattedSeq}`;
+            showLoading(false);
         }
     }
-    if (transactionDateInput) transactionDateInput.addEventListener('change', getNextVoucherNumber);
 
     if (addTransactionButton) {
         addTransactionButton.addEventListener('click', async () => {
@@ -466,41 +469,80 @@ document.addEventListener('DOMContentLoaded', function() {
                 showStatus("Isi semua field transaksi dengan benar.", "error"); return;
             }
 
-            showLoading(true);
-            const noUrut = await getNextVoucherNumber();
-            const currentVoucherMonthYear = getMonthYear(tgl);
-            const noVoucher = `<span class="math-inline">\{tipe\}\-</span>{currentVoucherMonthYear}-${noUrut}`;
+            showLoading(true, "Menyimpan Transaksi...");
 
+            const yearMonth = tgl.slice(0, 7); // "YYYY-MM"
+            const counterDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/voucherCounters/${yearMonth}`);
 
-            const transactionData = {
-                reportDate: currentReportDate,
-                transactionDate: tgl,
-                voucherType: tipe,
-                voucherNumberSequence: noUrut,
-                noVoucher: noVoucher,
-                description: keterangan,
-                totalKas: totalKas,
-                category: kategori,
-                voucherMonthYear: currentVoucherMonthYear,
-            };
+            let finalVoucherNumber = "";
+            let finalSequenceNumber = 0;
 
             try {
-                const transactionsColRef = collection(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}/transactions`);
                 if (editingTransactionId) {
-                    transactionData.updatedAt = serverTimestamp();
-                    const transactionDocRef = doc(transactionsColRef, editingTransactionId);
-                    await setDoc(transactionDocRef, transactionData, { merge: true });
-                    showStatus("Transaksi berhasil diperbarui.", "success");
+                    const txDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}/transactions/${editingTransactionId}`);
+                    const originalTxSnap = await getDoc(txDocRef);
+
+                    if (originalTxSnap.exists()) {
+                        const originalTx = originalTxSnap.data();
+                        const transactionData = {
+                            reportDate: currentReportDate, 
+                            transactionDate: tgl,
+                            voucherType: tipe, 
+                            noVoucher: originalTx.noVoucher, // Use original voucher number
+                            voucherNumberSequence: originalTx.voucherNumberSequence,
+                            description: keterangan,
+                            totalKas: totalKas, 
+                            category: kategori,
+                            voucherMonthYear: originalTx.voucherMonthYear,
+                            createdAt: originalTx.createdAt, 
+                            updatedAt: serverTimestamp()
+                        };
+                        await setDoc(txDocRef, transactionData);
+                        showStatus("Transaksi berhasil diperbarui.", "success");
+                    } else {
+                        throw new Error("Dokumen asli untuk diedit tidak ditemukan.");
+                    }
                 } else {
-                    transactionData.createdAt = serverTimestamp();
+                    await runTransaction(db, async (transaction) => {
+                        const counterDoc = await transaction.get(counterDocRef);
+                        let currentSeq = 0;
+                        if (counterDoc.exists()) {
+                            currentSeq = counterDoc.data()[tipe] || 0;
+                        }
+                        finalSequenceNumber = currentSeq + 1;
+                        const newData = {};
+                        newData[tipe] = finalSequenceNumber;
+                        transaction.set(counterDocRef, newData, { merge: true });
+                    });
+
+                    const formattedSeq = String(finalSequenceNumber).padStart(3, '0');
+                    const voucherMonthYearForNumber = getMonthYear(tgl);
+                    finalVoucherNumber = `${tipe}-${voucherMonthYearForNumber}-${formattedSeq}`;
+
+                    const transactionData = {
+                        reportDate: currentReportDate, 
+                        transactionDate: tgl,
+                        voucherType: tipe, 
+                        voucherNumberSequence: formattedSeq, 
+                        noVoucher: finalVoucherNumber, 
+                        description: keterangan,
+                        totalKas: totalKas, 
+                        category: kategori,
+                        voucherMonthYear: voucherMonthYearForNumber,
+                        createdAt: serverTimestamp()
+                    };
+
+                    const transactionsColRef = collection(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}/transactions`);
                     await addDoc(transactionsColRef, transactionData);
                     showStatus("Transaksi berhasil ditambahkan.", "success");
                 }
+
                 resetForm();
-                await getNextVoucherNumber();
+                await updateVoucherNumberDisplay();
+
             } catch (error) {
-                console.error("Error saving transaction: ", error);
-                showStatus(`Gagal menyimpan: ${error.message}`, "error");
+                console.error("Gagal menyimpan transaksi: ", error);
+                showStatus("Gagal menyimpan: " + error.message, "error");
             } finally {
                 showLoading(false);
             }
@@ -518,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addTransactionButton.classList.add('bg-green-500', 'hover:bg-green-600', 'text-white');
         }
         if (cancelEditButton) cancelEditButton.classList.add('hidden');
-        if (selectedGroup) getNextVoucherNumber();
+        if (selectedGroup) updateVoucherNumberDisplay();
     }
     if (cancelEditButton) cancelEditButton.addEventListener('click', resetForm);
 
@@ -551,7 +593,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         showLoading(true);
-        const transactionsColRef = collection(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}/transactions`);
+        const transactionsColRef = collection(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}/transactions`);
         const q = query(transactionsColRef, orderBy("createdAt", "asc"));
 
         unsubscribeTransactions = onSnapshot(q, async (querySnapshot) => {
@@ -559,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function() {
             querySnapshot.forEach((doc) => { transactions.push({ id: doc.id, ...doc.data() }); });
             await renderReport();
             if (!editingTransactionId) {
-                await getNextVoucherNumber();
+                await updateVoucherNumberDisplay();
             }
             showLoading(false);
         }, (error) => {
@@ -570,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function saveReportSummaryData(summaryData) {
         if (!userId || !currentReportDate || !selectedGroup) return;
-        const reportDocRef = doc(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}`);
+        const reportDocRef = doc(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}`);
         try {
             const numericSummaryData = {};
             for (const key in summaryData) {
@@ -964,17 +1006,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const impresLbl = combinedImpresLabelCell.textContent.trim();
             const reimburseVal = combinedReimburseValueCell.textContent.trim();
             const reimburseLbl = combinedReimburseLabelCell.textContent.trim();
-            tsvContent += `""\t""\t"<span class="math-inline">\{impresLbl\}"\\t"</span>{impresVal}"\t"<span class="math-inline">\{reimburseLbl\}"\\t"</span>{reimburseVal}"\t""\t""\t""\t""\n`;
+            tsvContent += `""\t""\t"${impresLbl}"\t"${impresVal}"\t"${reimburseLbl}"\t"${reimburseVal}"\t""\t""\t""\t""\n`;
         }
         if (grandTotalValueCell && grandTotalLabelCell) {
             const grandVal = grandTotalValueCell.textContent.trim();
             const grandLbl = grandTotalLabelCell.textContent.trim();
-            tsvContent += `""\t""\t"<span class="math-inline">\{grandLbl\}"\\t"</span>{grandVal}"\t""\t""\t""\t""\t""\t""\n`;
+            tsvContent += `""\t""\t"${grandLbl}"\t"${grandVal}"\t""\t""\t""\t""\t""\t""\n`;
         }
         if (selisihFooterValueCell && selisihFooterLabelCell) {
             const selisihVal = selisihFooterValueCell.textContent.trim();
             const selisihLbl = selisihFooterLabelCell.textContent.trim();
-            tsvContent += `""\t""\t"<span class="math-inline">\{selisihLbl\}"\\t"</span>{selisihVal}"\t""\t""\t""\t""\t""\t""\n`;
+            tsvContent += `""\t""\t"${selisihLbl}"\t"${selisihVal}"\t""\t""\t""\t""\t""\t""\n`;
         }
         return tsvContent;
     }
@@ -1065,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function performDeleteAllTransactions() {
         showLoading(true);
         try {
-            const transactionsColRef = collection(db, `artifacts/<span class="math-inline">\{appId\}/users/</span>{userId}/groupData/<span class="math-inline">\{selectedGroup\}/dailyCashReports/</span>{currentReportDate}/transactions`);
+            const transactionsColRef = collection(db, `artifacts/${appId}/users/${userId}/groupData/${selectedGroup}/dailyCashReports/${currentReportDate}/transactions`);
             const qSnapshot = await getDocs(transactionsColRef);
             const batch = writeBatch(db);
             qSnapshot.forEach(doc => batch.delete(doc.ref));
@@ -1078,6 +1120,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Inisialisasi awal form
     if (companyNameElement) companyNameElement.textContent = "NAMA KELOMPOK";
     resetForm();
-});
+
+}); // <- Penutup untuk 'DOMContentLoaded'
+</script>
