@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ambil konfigurasi Firebase dari HTML
     const firebaseConfig = window.firebaseConfig;
-    const appId = 'kas-harian-default'; // Kita set default di sini
+    const appId = 'kas-harian-default';
 
     // Inisialisasi Firebase
     const app = initializeApp(firebaseConfig);
@@ -1080,5 +1080,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (companyNameElement) companyNameElement.textContent = "NAMA KELOMPOK";
     resetForm();
-
 });
