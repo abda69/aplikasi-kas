@@ -7,12 +7,13 @@ import { getFirestore, collection, addDoc, query, onSnapshot, doc, getDoc, setDo
 
 // LANGKAH 2: GANTI BAGIAN INI DENGAN KONFIGURASI FIREBASE ANDA
 const firebaseConfig = {
-  apiKey: "MASUKKAN_API_KEY_ANDA",
-  authDomain: "MASUKKAN_AUTH_DOMAIN_ANDA",
-  projectId: "MASUKKAN_PROJECT_ID_ANDA",
-  storageBucket: "MASUKKAN_STORAGE_BUCKET_ANDA",
-  messagingSenderId: "MASUKKAN_MESSAGING_SENDER_ID_ANDA",
-  appId: "MASUKKAN_APP_ID_ANDA"
+  apiKey: "AIzaSyAM__kNuObKNb1NdOPv_Arz_Db7t2C7lMI",
+  authDomain: "patty-cash-c6820.firebaseapp.com",
+  projectId: "patty-cash-c6820",
+  storageBucket: "patty-cash-c6820.firebasestorage.app",
+  messagingSenderId: "773824388873",
+  appId: "1:773824388873:web:06ffb0b629fe7cbcde7dd8",
+  measurementId: "G-80ZV2ZNY8D"
 };
 
 // LANGKAH 3: Inisialisasi Firebase di sini, di luar event listener
